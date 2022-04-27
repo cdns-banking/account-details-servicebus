@@ -1,6 +1,8 @@
 using System;
+using System.Collections.Generic;
 using System.Net.Http;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Extensions.Logging;
@@ -20,8 +22,23 @@ namespace account_details_servicebus
         }
 
         [FunctionName("Function1")]
-        public static async Task Run([ServiceBusTrigger("cdnsqueue", Connection = "ServiceBusConnectionString")]string myQueueItem, ILogger log)
+        public static async Task Run([ServiceBusTrigger("cdnsqueue", Connection = "ServiceBusConnectionString")]CustomerDetails myQueueItem, ILogger log)
         {
+
+            var client = new HttpClient();
+
+            var custDetails = new List<KeyValuePair<string, string>>
+            {
+                new KeyValuePair<string, string>("FirstName", myQueueItem.FirstName),
+                new KeyValuePair<string, string>("LastName", myQueueItem.LastName),
+                new KeyValuePair<string, string>("PhoneNumber", myQueueItem.PhoneNumber),
+                new KeyValuePair<string, string>("EmailId", myQueueItem.EmailId),
+                new KeyValuePair<string, string>("UserType", myQueueItem.UserType),
+                new KeyValuePair<string, string>("UniversityName", myQueueItem.UniversityName),
+            };
+
+            var content = new FormUrlEncodedContent(custDetails);
+
 
             var apiClient = new HttpClient();
             int i = 0;
@@ -36,7 +53,7 @@ namespace account_details_servicebus
                 try
                 {
                     apiResponse = await _circuitBreakerPolicy.ExecuteAsync(
-                        () => apiClient.GetAsync("https://localhost:5001/api/CustomerAccount/GetCustomerDetails", HttpCompletionOption.ResponseContentRead)
+                        () => apiClient.PostAsync("https://localhost:44354/api/CustomerAccount/PostCustomerDetails", content)
                         );
                     var json = await apiResponse.Content.ReadAsStringAsync();
                     // End calling to WebAPI
